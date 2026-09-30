@@ -1,0 +1,30 @@
+# Compiled Java class files and build outputs
+*.class
+bin/
+out/
+target/
+build/
+dist/
+
+# Standalone JARs generated locally
+*.jar
+*.war
+*.nar
+*.ear
+
+# Logs and system files
+*.log
+.DS_Store
+Thumbs.db
+
+# IDE files (IntelliJ IDEA, Eclipse, VS Code, NetBeans)
+.idea/
+*.iml
+*.iws
+*.ipr
+.project
+.classpath
+.settings/
+.vscode/
+.nbproject/
+.kilo/

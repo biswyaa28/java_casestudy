@@ -1,0 +1,106 @@
+name: Build and Release Installers
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            artifact_name: AssetSystem-macOS.dmg
+            package_type: dmg
+          - os: windows-latest
+            artifact_name: AssetSystem-Windows.exe
+            package_type: exe
+          - os: ubuntu-latest
+            artifact_name: AssetSystem-Linux.deb
+            package_type: deb
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Compile Java Code and Build Runnable JAR
+        shell: bash
+        run: |
+          mkdir -p bin
+          mkdir -p input_jar
+          mkdir -p dist
+          javac -d bin $(find src -name "*.java")
+          jar cfe input_jar/AssetSystem.jar Main -C bin .
+
+      - name: Build Native Bundled Installer with jpackage
+        shell: bash
+        run: |
+          jpackage \
+            --input input_jar \
+            --name "Asset Allocation System" \
+            --main-jar AssetSystem.jar \
+            --main-class Main \
+            --type ${{ matrix.package_type }} \
+            --app-version 1.0.0 \
+            --dest dist
+
+      - name: Standardize Installer File Name
+        shell: bash
+        run: |
+          cd dist
+          ls -la
+          # Rename the generated installer file to our standardized name
+          if [ "${{ matrix.os }}" = "macos-latest" ]; then
+            mv *.dmg ../${{ matrix.artifact_name }}
+          elif [ "${{ matrix.os }}" = "windows-latest" ]; then
+            mv *.exe ../${{ matrix.artifact_name }}
+          elif [ "${{ matrix.os }}" = "ubuntu-latest" ]; then
+            mv *.deb ../${{ matrix.artifact_name }}
+          fi
+          cd ..
+
+      - name: Upload Native Installer to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ matrix.artifact_name }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  release-universal-jar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Build Universal Runnable JAR
+        run: |
+          mkdir -p bin
+          javac -d bin $(find src -name "*.java")
+          jar cfe AssetSystem.jar Main -C bin .
+
+      - name: Upload Universal JAR to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: AssetSystem.jar
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
